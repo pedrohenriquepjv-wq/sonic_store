@@ -1,173 +1,116 @@
-# Documentação Técnica — Sonic Wear 
+# Documentação Técnica — Sonic Store
 
-## 1. Visão Geral do Sistema — Sonic Wear
+## 1. Visão Geral do Sistema
+O **Sonic Wear** é uma aplicação web desenvolvida em PHP e MySQL voltada para o gerenciamento de um catálogo e e-commerce de vestuário streetwear temático. O sistema conta com controle de acesso baseado em perfis (Administrador e Cliente), permitindo a gestão CRUD (Criar, Ler, Atualizar e Deletar) de produtos.
 
-O **Sonic Wear** é uma plataforma web criada pra rodar um e-commerce de *streetwear* com temática geek/gaming (focado no universo Sonic). A ideia do projeto é ser leve, rápido e sem complicações de frameworks pesados: foi construído usando **PHP 8.x nativo** na raça e banco de dados **PostgreSQL**, garantindo segurança no acesso a dados via PDO e separação clara do que cada tipo de usuário pode fazer.
+- **Prototipagem do Projeto (Figma):** [Acessar Slides no Figma](https://www.figma.com/slides/baWGMP1dcMhQDLScUGlxxi/Sem-t%C3%ADtulo?node-id=1-42&t=UVPqow54GuvdWCIK-0)
 
 ---
 
-### 1.1. Recursos Principais
+## 2. Arquitetura e Estrutura de Pastas
 
-####  Autenticação & Gestão de Usuários
-- **Controle de Acesso por Perfil (RBAC):** Separação total de privilégios entre **Clientes** (compradores) e **Administradores** (gestores da loja).
-- **Sessões Seguras:** Controle de login e logout com validação contínua de permissões em páginas restritas (`verifica_user.php`).
-- **Registro de Contas:** Auto-cadastro de novos clientes diretamente pela interface pública.
-
-####  Gestão Completa de Produtos (CRUD)
-- **Painel Administrativo:** Interface restrita para cadastrar, editar e excluir produtos do catálogo.
-- **Controle de Estoque e Grade:** Suporte a diferentes tamanhos (P, M, G, GG) e controle de disponibilidade (`em_estoque`).
-- **Gestão de Fornecedores:** Vinculação opcional de e-mail de fornecedores a cada item para facilitar reabastecimentos.
-- **Visualização do Catálogo:** Vitrine geral com navegação rápida e consulta detalhada por produto individual (`select_w.php?id=X`).
-
-####  Utilitários e Automação
-- **Instalação em Um Clique:** Script `instalar.php` que cria automaticamente todas as tabelas no PostgreSQL sem precisar rodar scripts manuais no banco.
-- **Povoamento de Testes (Seeder):** Script `popular.php` para preencher o catálogo e os usuários de teste com um único clique.
-- **Identidade Visual Personalizada:** Suporte a fontes customizadas da marca (`Canyon Street.otf`) e assets estáticos integrados.
-
-## 2. Arquitetura e Mapeamento de Arquivos
-
-### 2.1. Estrutura de Diretórios
-
-```
+```text
 sonic_store/
 ├── app/
-│   ├── CREATE TABLE usuarios (.sql   # Script SQL bruto de fallback
-│   ├── create.php                    # Formulário e action de cadastro de produtos
-│   ├── delete.php                    # Controller de exclusão lógica/física de produtos
-│   ├── select.php                    # View/Controller do catálogo público/admin
-│   ├── select_w.php                  # Consulta parametrizada por ID (detalhes do produto)
-│   └── update.php                    # Formulário e action de edição de produtos
+│   ├── CREATE TABLE usuarios.sql     # Script SQL de criação de tabelas
+│   ├── create.php                    # Formulário de cadastro de produtos (Admin)
+│   ├── delete.php                    # Exclusão de produtos (Admin)
+│   ├── select.php                    # Exibição do catálogo de produtos e exibição de IDs
+│   ├── select_w.php                  # Consulta individual por ID
+│   └── update.php                    # Atualização de dados dos produtos
 ├── database/
-│   └── connect.php                   # Singleton/Script de conexão PDO PostgreSQL
+│   └── connect.php                   # Conexão PDO com banco de dados MySQL usando __DIR__
 ├── includes/
-│   ├── footer.php                    # Componente global: Rodapé HTML/JS
-│   ├── functions.php                 # Funções auxiliares (sanitização, helpers CRUD)
-│   └── header.php                    # Componente global: Barra de navegação e CSS
+│   ├── footer.php                    # Rodapé global da aplicação
+│   ├── functions.php                 # Funções auxiliares CRUD
+│   └── header.php                    # Cabeçalho e menu de navegação global
 ├── login/
-│   ├── cadastrar.php                 # Controller/View de registro de clientes
-│   ├── login.php                     # Controller/View de autenticação
-│   ├── logout.php                    # Destruição de sessão
-│   └── verifica_user.php             # Middleware de proteção de rotas restritas
-├── Canyon Street.otf                 # Tipografia customizada da marca
-├── eggman.png                        # Asset visual estático (mascote/banner)
-├── index.php                         # Landing Page e vitrine principal
-├── instalar.php                      # Bootstrap do banco de dados (DDL)
-└── popular.php                       # Seeder de dados iniciais (DML)
+│   ├── cadastrar.php                 # Registro de novos usuários
+│   ├── login.php                     # Autenticação de usuários/admin
+│   ├── logout.php                    # Encerramento de sessão
+│   └── verifica_user.php             # Middleware/Trava de sessão
+├── Canyon Street.otf                 # Fonte customizada do projeto
+├── eggman.png                        # Asset de imagem estática
+├── index.php                         # Página inicial (Landing Page/Login)
+├── instalar.php                      # Script de instalação do banco de dados
+└── popular.php                       # Script para povoamento inicial de dados 
 ```
 
-### 2.2. Mapeamento de Endpoints e Funcionalidades
+---
 
-| Rota / Arquivo | Métodos HTTP | Nível de Acesso | Descrição | 
-| ----- | ----- | ----- | ----- | 
-| `index.php` | `GET` | Público | Página inicial com destaque para lançamentos | 
-| `login/cadastrar.php` | `GET`, `POST` | Público | Formulário de criação de conta de cliente | 
-| `login/login.php` | `GET`, `POST` | Público | Autenticação e inicialização da sessão (`$_SESSION`) | 
-| `login/logout.php` | `GET` | Autenticado | Encerramento da sessão e destruição de tokens localizados | 
-| `app/select.php` | `GET` | Público | Listagem completa de produtos em estoque | 
-| `app/select_w.php` | `GET` | Público | Consulta detalhada do produto via ID (`?id=X`) | 
-| `app/create.php` | `GET`, `POST` | Admin | Formulário e processamento do cadastro de novos produtos | 
-| `app/update.php` | `GET`, `POST` | Admin | Alteração de preços, estoque e metadados do produto | 
-| `app/delete.php` | `POST`, `GET` | Admin | Remoção de produto do catálogo | 
-| `instalar.php` | `GET` | Admin / Dev | Criação automática das tabelas no PostgreSQL | 
-| `popular.php` | `GET` | Admin / Dev | Inserção de dados fictícios para testes | 
+## 3. Modelo do Banco de Dados (MySQL)
 
-## 3. Modelo e Dicionário de Banco de Dados (PostgreSQL)
+### 3.1. Tabela `usuarios`
+Armazena as credenciais de acesso e o nível de permissão de cada usuário.
 
-### 3.1. Dicionário de Dados: Tabela `usuarios`
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| **id** | INT | AUTO_INCREMENT, PRIMARY KEY | Identificador único do usuário |
+| **nome** | VARCHAR(100) | NOT NULL | Nome completo do usuário |
+| **email** | VARCHAR(150) | UNIQUE, NOT NULL | E-mail para autenticação |
+| **senha** | VARCHAR(255) | NOT NULL | Senha de acesso |
+| **nivel** | VARCHAR(20) | DEFAULT 'comum' | Perfil de acesso (admin ou comum) |
 
-| Coluna | Tipo SQL | Chave | Restrições | Padrão | Descrição | 
-| ----- | ----- | ----- | ----- | ----- | ----- | 
-| `id` | `SERIAL` | PK | `NOT NULL` | Auto-incremento | Identificador único do usuário | 
-| `nome` | `VARCHAR(100)` | — | `NOT NULL` | — | Nome completo do usuário | 
-| `email` | `VARCHAR(150)` | UNIQUE | `NOT NULL` | — | E-mail de login e notificações | 
-| `senha` | `VARCHAR(255)` | — | `NOT NULL` | — | Hash de senha (utilizar `password_hash`) | 
-| `nivel` | `VARCHAR(20)` | — | `NOT NULL` | `'cliente'` | Perfil de acesso (`'admin'` ou `'cliente'`) | 
+### 3.2. Tabela `produtos`
+Armazena o catálogo de vestuário da loja.
 
-### 3.2. Dicionário de Dados: Tabela `produtos`
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| **id** | INT | AUTO_INCREMENT, PRIMARY KEY | Identificador único do produto |
+| **nome** | VARCHAR(100) | NOT NULL | Nome comercial do produto |
+| **categoria** | VARCHAR(50) | NOT NULL | Categoria (ex: Camisetas, Casacos) |
+| **tamanho** | VARCHAR(10) | NOT NULL | Tamanho da peça (ex: P, M, G, GG) |
+| **preco** | DECIMAL(10,2) | NOT NULL | Valor do produto em Reais (R$) |
 
-| Coluna | Tipo SQL | Chave | Restrições | Padrão | Descrição | 
-| ----- | ----- | ----- | ----- | ----- | ----- | 
-| `id` | `SERIAL` | PK | `NOT NULL` | Auto-incremento | Identificador único do produto | 
-| `nome` | `VARCHAR(100)` | — | `NOT NULL` | — | Nome comercial do produto | 
-| `categoria` | `VARCHAR(50)` | — | `NOT NULL` | — | Categoria (ex: Camiseta, Moletom, Acessório) | 
-| `tamanho` | `VARCHAR(10)` | — | `NOT NULL` | — | Tamanho da peça (P, M, G, GG, XG) | 
-| `preco` | `NUMERIC(10,2)` | — | `NOT NULL` | `0.00` | Preço unitário em Reais (R\$) | 
-| `em_estoque` | `BOOLEAN` | — | `NOT NULL` | `true` | Flag indicando se há unidades disponíveis | 
-| `email_fornecedor` | `VARCHAR(150)` | — | `NULLABLE` | `NULL` | Contato do fornecedor para reposição | 
+---
 
-## 4. Segurança e Matriz de Permissões (RBAC)
+## 4. Módulos e Fluxo de Autenticação
 
-### 4.1. Matriz de Acesso
+### 4.1. Resolução de Caminhos de Arquivos (`__DIR__`)
+O sistema utiliza a constante mágica `__DIR__` em todas as inclusões de arquivos internos (`require_once __DIR__ . '/../database/connect.php'`), garantindo o mapeamento de caminhos absolutos no servidor e evitando falhas na inclusão de cabeçalhos e conexões independentemente do diretório de execução.
 
-| Ação / Módulo | Visitante (Anônimo) | Cliente | Administrador | 
-| ----- | ----- | ----- | ----- | 
-| Visualizar Home e Catálogo | Visualiza | Visualiza | Visualiza | 
-| Consultar Detalhes do Produto | Visualiza | Visualiza | Visualiza | 
-| Criar Conta (Self-register) | Executa | Indisponível | Indisponível | 
-| Efetuar Login / Logout | Executa | Executa | Executa | 
-| Cadastrar / Editar Produtos | Acesso Negado | Acesso Negado | Executa | 
-| Excluir Produtos | Acesso Negado | Acesso Negado | Executa | 
-| Executar Scripts de Instalação (`instalar.php`) | Acesso Negado | Acesso Negado | Executa | 
+### 4.2. Controle de Sessão e Permissões
+- **Login (`login/login.php`):** Autentica o usuário no banco de dados e registra na sessão global `$_SESSION` as chaves:
+  - `$_SESSION['usuario_id']`
+  - `$_SESSION['usuario_nome']`
+  - `$_SESSION['usuario_email']`
+  - `$_SESSION['usuario_nivel']`
+- **Validação Admin (`app/create.php`):** Valida as permissões de administrador antes de disponibilizar ações restritas do CRUD.
 
-### 4.2. Diretrizes de Segurança Implementadas e Recomendadas
+---
 
-1. **Proteção Contra SQL Injection:** Toda a comunicação com o banco via `database/connect.php` utiliza **PDO com Prepared Statements** (`PDO::prepare()`).
-
-2. **Proteção de Rotas:** O arquivo `login/verifica_user.php` atua como middleware interceptando as requisições em páginas administrativas (`create.php`, `update.php`, `delete.php`):
-
-   ```php
-   session_start();
-   if (!isset($_SESSION['usuario_nivel']) || $_SESSION['usuario_nivel'] !== 'admin') {
-       header('Location: /app/select.php?erro=acesso_negado');
-       exit();
-   }
-   ```
-
-3. **Criptografia de Senhas:** Senhas armazenadas na tabela `usuarios` devem obrigatoriamente utilizar a função `password_hash($senha, PASSWORD_DEFAULT)` e serem validadas com `password_verify()`.
-
-## 5. Procedimentos de Instalação e Execução
+## 5. Instruções de Instalação e Execução
 
 ### 5.1. Pré-requisitos
+- PHP 8.x instalado no ambiente.
+- Servidor MySQL/MariaDB em execução.
+- Terminal Bash ou MobaXterm com Git configurado.
 
-* **Servidor Web / Runtime:** PHP 8.1 ou superior.
-* **Driver PHP:** Extensão `pdo_pgsql` ativada no `php.ini`.
-* **Banco de Dados:** Servidor PostgreSQL 13+ ativo.
-* **Terminal:** Terminal Bash, PowerShell ou MobaXterm.
+### 5.2. Como Baixar e Executar o Projeto
 
-### 5.2. Passo a Passo para Implantação Local
+1. **Acesse o diretório base do servidor web no terminal:**
+   ```bash
+   cd /var/www/html
+   ```
 
-#### Passo 1: Configurar Banco de Dados
+2. **Clone o repositório do projeto no servidor:**
+   ```bash
+   git clone https://github.com/teu-usuario/sonic_store.git
+   ```
 
-Crie o banco de dados no PostgreSQL e configure as credenciais no arquivo `database/connect.php`:
+3. **Entre na pasta do projeto:**
+   ```bash
+   cd sonic_store
+   ```
 
-```php
-$host = 'localhost';
-$db   = 'sonic_wear_db';
-$user = 'postgres';
-$pass = 'sua_senha';
-```
+4. **Inicie o servidor embutido do PHP apontando para todas as interfaces de rede:**
+   ```bash
+   php -S 0.0.0.0:8000
+   ```
 
-#### Passo 2: Executar Instalação das Tabelas
+5. **Acesse a aplicação no seu navegador:**
+   - **Localmente:** `http://localhost:8000/sonic_store/`
+   - **Pela rede local / MobaXterm:** `http://[SEU_IP]:8000/sonic_store/`
 
-Acesse a rota de instalação pelo navegador ou CLI para disparar a criação automática da estrutura DDL:
-
-```text
-http://192.168.10.74:8000/instalar.php
-```
-
-#### Passo 3: Povoar Dados de Teste
-
-Dispare o script seeder para cadastrar produtos e o usuário administrador inicial:
-
-```text
-http://192.168.10.74:8000/popular.php
-```
-
-#### Passo 4: Subir o Servidor em Rede Local
-
-Navegue até o diretório raiz do projeto no servidor `/var/www/html` e inicie o servidor embutido do PHP apontando para o IP de rede:
-
-```bash
-cd /var/www/html/sonic_store
-php -S 192.168.10.74:8000
-```
+6. **Para abrir o catálogo com exibição de IDs e funcionalidade de restauração de dados padrão, navegue até:**
+   - `http://[SEU_IP]:8000/sonic_store/app/select.php`
